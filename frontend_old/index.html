@@ -1,0 +1,146 @@
+ 
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <title>Paušal App</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 30px;
+    }
+
+h1 {
+      color: #222;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+      margin: 0;
+      color: #555;
+      font-size: 15px;
+    }
+
+    .card p {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0 0;
+    }
+
+    table {
+      width: 100%;
+      background: white;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background: #eef1f5;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Paušal App - Dashboard</h1>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Ukupni prihodi</h3>
+      <p id="total_income">0 RSD</p>
+    </div>
+
+    <div class="card">
+      <h3>Ukupni rashodi</h3>
+      <p id="total_expense">0 RSD</p>
+    </div>
+
+    <div class="card">
+      <h3>Dobit</h3>
+      <p id="profit">0 RSD</p>
+    </div>
+
+    <div class="card">
+      <h3>Iskorišćen limit</h3>
+      <p id="used_percent">0%</p>
+    </div>
+  </div>
+
+  <h2>Kupci</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Naziv</th>
+        <th>PIB</th>
+        <th>Adresa</th>
+        <th>Email</th>
+        <th>Telefon</th>
+      </tr>
+    </thead>
+    <tbody id="customers_table"></tbody>
+  </table>
+
+  <script>
+    const API = "http://127.0.0.1:8000";
+
+    function formatMoney(value) {
+      return Number(value).toLocaleString("sr-RS") + " RSD";
+    }
+
+    async function loadDashboard() {
+      const response = await fetch(API + "/dashboard/1");
+      const data = await response.json();
+
+      document.getElementById("total_income").innerText = formatMoney(data.total_income);
+      document.getElementById("total_expense").innerText = formatMoney(data.total_expense);
+      document.getElementById("profit").innerText = formatMoney(data.profit);
+      document.getElementById("used_percent").innerText = data.used_percent + "%";
+    }
+
+    async function loadCustomers() {
+      const response = await fetch(API + "/customers");
+      const customers = await response.json();
+
+      const table = document.getElementById("customers_table");
+      table.innerHTML = "";
+
+      customers.forEach(customer => {
+        table.innerHTML += `
+          <tr>
+            <td>${customer.name}</td>
+            <td>${customer.pib || ""}</td>
+            <td>${customer.address || ""}</td>
+            <td>${customer.email || ""}</td>
+            <td>${customer.phone || ""}</td>
+          </tr>
+        `;
+      });
+    }
+
+    loadDashboard();
+    loadCustomers();
+  </script>
+
+</body>
+</html>
