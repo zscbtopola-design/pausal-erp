@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCustomers, addCustomer, deleteCustomer } from "../services/api";
+import { getCustomers, addCustomer, deleteCustomer } from "../api/services/customers";
 import DataTable from "../components/DataTable/DataTable";
 
 function Customers() {

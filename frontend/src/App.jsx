@@ -5,6 +5,7 @@ import MainLayout from "./layouts/MainLayout";
 
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
+import Suppliers from "./pages/Suppliers";
 import Placeholder from "./pages/Placeholder";
 
 function App() {
@@ -34,13 +35,13 @@ function App() {
       />
 
       <Route
-        path="/suppliers"
-        element={
-          <MainLayout title="Dobavljači">
-            <Placeholder title="Dobavljači" />
-          </MainLayout>
-        }
-      />
+  path="/suppliers"
+  element={
+    <MainLayout title="Dobavljači">
+      <Suppliers />
+    </MainLayout>
+  }
+/>
 
       <Route
         path="/incomes"
