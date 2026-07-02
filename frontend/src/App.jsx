@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
 import Placeholder from "./pages/Placeholder";
+import Incomes from "./pages/Incomes";
 
 function App() {
   return (
@@ -43,14 +44,14 @@ function App() {
   }
 />
 
-      <Route
-        path="/incomes"
-        element={
-          <MainLayout title="Prihodi">
-            <Placeholder title="Prihodi" />
-          </MainLayout>
-        }
-      />
+<Route
+    path="/incomes"
+    element={
+        <MainLayout title="Prihodi">
+            <Incomes />
+        </MainLayout>
+    }
+/>
 
       <Route
         path="/expenses"

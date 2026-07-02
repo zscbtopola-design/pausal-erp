@@ -1,0 +1,52 @@
+.entity-form {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.08);
+  margin-bottom: 25px;
+}
+
+.entity-form h2{
+  margin-bottom:20px;
+}
+
+.entity-form form{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:18px;
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+}
+
+.form-group label{
+  margin-bottom:6px;
+  font-weight:600;
+  color:#444;
+}
+
+.form-group input,
+.form-group select{
+  padding:11px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  font-size:15px;
+}
+
+.entity-form button{
+  margin-top:10px;
+  padding:12px;
+  border:none;
+  border-radius:8px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+  font-size:15px;
+  transition:.2s;
+}
+
+.entity-form button:hover{
+  background:#1d4ed8;
+}
