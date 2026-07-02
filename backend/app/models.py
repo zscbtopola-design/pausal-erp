@@ -54,6 +54,9 @@ class Income(Base):
     company_id = Column(Integer, ForeignKey("companies.id"))
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
     date = Column(Date, nullable=False)
+    invoice_number = Column(String, nullable=True)
+    payment_method = Column(String, default="racun")
+    status = Column(String, default="placeno")
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
 

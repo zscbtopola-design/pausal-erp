@@ -17,6 +17,9 @@ function Incomes() {
     company_id: 1,
     customer_id: "",
     date: "",
+    invoice_number: "",
+    payment_method: "racun",
+    status: "placeno",
     description: "",
     amount: "",
   });
@@ -49,6 +52,9 @@ function Incomes() {
       company_id: 1,
       customer_id: form.customer_id ? Number(form.customer_id) : null,
       date: form.date,
+      invoice_number: form.invoice_number,
+      payment_method: form.payment_method,
+      status: form.status,
       description: form.description,
       amount: Number(form.amount),
     });
@@ -57,6 +63,9 @@ function Incomes() {
       company_id: 1,
       customer_id: "",
       date: "",
+      invoice_number: "",
+      payment_method: "racun",
+      status: "placeno",
       description: "",
       amount: "",
     });

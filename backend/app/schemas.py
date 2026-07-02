@@ -48,9 +48,11 @@ class IncomeCreate(BaseModel):
     company_id: int
     customer_id: int | None = None
     date: date
+    invoice_number: str | None = None
+    payment_method: str = "racun"
+    status: str = "placeno"
     description: str
     amount: float
-
 
 class IncomeOut(IncomeCreate):
     id: int

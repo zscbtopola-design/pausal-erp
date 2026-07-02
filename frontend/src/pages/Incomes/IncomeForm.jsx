@@ -4,6 +4,13 @@ function IncomeForm({ form, customers, onChange, onSubmit }) {
       <h2>Novi prihod</h2>
 
       <form onSubmit={onSubmit}>
+        <input
+          name="invoice_number"
+          placeholder="Broj fakture"
+          value={form.invoice_number}
+          onChange={onChange}
+        />
+
         <input type="date" name="date" value={form.date} onChange={onChange} />
 
         <select name="customer_id" value={form.customer_id} onChange={onChange}>
@@ -13,6 +20,23 @@ function IncomeForm({ form, customers, onChange, onSubmit }) {
               {c.name}
             </option>
           ))}
+        </select>
+
+        <select
+          name="payment_method"
+          value={form.payment_method}
+          onChange={onChange}
+        >
+          <option value="racun">Račun</option>
+          <option value="gotovina">Gotovina</option>
+          <option value="kartica">Kartica</option>
+          <option value="avans">Avans</option>
+        </select>
+
+        <select name="status" value={form.status} onChange={onChange}>
+          <option value="placeno">Plaćeno</option>
+          <option value="neplaceno">Neplaćeno</option>
+          <option value="stornirano">Stornirano</option>
         </select>
 
         <input
