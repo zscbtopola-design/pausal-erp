@@ -74,3 +74,40 @@ class Expense(Base):
     amount = Column(Float, nullable=False)
 
     company = relationship("Company", back_populates="expenses")
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"))
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
+
+    invoice_number = Column(String, nullable=False)
+    invoice_date = Column(Date, nullable=False)
+    description = Column(String, nullable=True)
+
+    amount = Column(Float, nullable=False)
+    status = Column(String, default="draft")
+    payment_method = Column(String, default="racun")
+
+    items = relationship(
+        "InvoiceItem",
+        back_populates="invoice",
+        cascade="all, delete-orphan"
+    )
+
+
+class InvoiceItem(Base):
+    __tablename__ = "invoice_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"))
+
+    description = Column(String, nullable=False)
+    quantity = Column(Float, default=1)
+    unit_price = Column(Float, default=0)
+    discount = Column(Float, default=0)
+    total = Column(Float, default=0)
+
+    invoice = relationship("Invoice", back_populates="items")

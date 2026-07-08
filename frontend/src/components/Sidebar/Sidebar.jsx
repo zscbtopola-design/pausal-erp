@@ -1,15 +1,16 @@
 import { NavLink } from "react-router-dom";
 
 function Sidebar() {
-  const items = [
-    { path: "/dashboard", label: "Dashboard", icon: "📊" },
-    { path: "/customers", label: "Kupci", icon: "👥" },
-    { path: "/suppliers", label: "Dobavljači", icon: "🏢" },
-    { path: "/incomes", label: "Prihodi", icon: "💰" },
-    { path: "/expenses", label: "Rashodi", icon: "💸" },
-    { path: "/reports", label: "Izveštaji", icon: "📄" },
-    { path: "/settings", label: "Podešavanja", icon: "⚙️" },
-  ];
+const items = [
+  { path: "/dashboard", label: "Dashboard", icon: "📊" },
+  { path: "/customers", label: "Kupci", icon: "👥" },
+  { path: "/suppliers", label: "Dobavljači", icon: "🏢" },
+  { path: "/incomes", label: "Prihodi", icon: "💰" },
+  { path: "/invoices", label: "Fakture", icon: "📄" },
+  { path: "/expenses", label: "Rashodi", icon: "💸" },
+  { path: "/reports", label: "Izveštaji", icon: "📄" },
+  { path: "/settings", label: "Podešavanja", icon: "⚙️" },
+];
 
   return (
     <aside className="sidebar">

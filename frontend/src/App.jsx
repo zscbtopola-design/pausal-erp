@@ -6,16 +6,14 @@ import MainLayout from "./layouts/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
-import Placeholder from "./pages/Placeholder";
 import Incomes from "./pages/Incomes";
+import Invoices from "./pages/Invoices";
+import Placeholder from "./pages/Placeholder";
 
 function App() {
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<Navigate to="/dashboard" replace />}
-      />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       <Route
         path="/dashboard"
@@ -36,22 +34,31 @@ function App() {
       />
 
       <Route
-  path="/suppliers"
-  element={
-    <MainLayout title="Dobavljači">
-      <Suppliers />
-    </MainLayout>
-  }
-/>
+        path="/suppliers"
+        element={
+          <MainLayout title="Dobavljači">
+            <Suppliers />
+          </MainLayout>
+        }
+      />
 
-<Route
-    path="/incomes"
-    element={
-        <MainLayout title="Prihodi">
+      <Route
+        path="/incomes"
+        element={
+          <MainLayout title="Prihodi">
             <Incomes />
-        </MainLayout>
-    }
-/>
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/invoices"
+        element={
+          <MainLayout title="Fakture">
+            <Invoices />
+          </MainLayout>
+        }
+      />
 
       <Route
         path="/expenses"

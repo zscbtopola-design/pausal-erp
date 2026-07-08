@@ -4,8 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
 
-from routers import customers, suppliers, dashboard, incomes, expenses
-
+from routers import customers, suppliers, dashboard, incomes, expenses, invoices
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Pausal ERP API")
@@ -23,6 +22,7 @@ app.include_router(suppliers.router)
 app.include_router(dashboard.router)
 app.include_router(incomes.router)
 app.include_router(expenses.router)
+app.include_router(invoices.router)
 
 
 @app.get("/")
