@@ -7,6 +7,7 @@ import {
   addInvoice,
   deleteInvoice,
 } from "../../api/services/invoices";
+import { formatDate, formatMoney } from "../../utils/format";
 
 function Invoices() {
   const [customers, setCustomers] = useState([]);
@@ -33,11 +34,8 @@ function Invoices() {
 
   async function loadData() {
     try {
-      const customersData = await getCustomers();
-      const invoicesData = await getInvoices();
-
-      setCustomers(customersData);
-      setInvoices(invoicesData);
+      setCustomers(await getCustomers());
+      setInvoices(await getInvoices());
     } catch (error) {
       console.error(error);
       alert("Greška pri učitavanju podataka.");
@@ -63,10 +61,7 @@ function Invoices() {
         itemIndex === index
           ? {
               ...item,
-              [field]:
-                field === "description"
-                  ? value
-                  : Number(value),
+              [field]: field === "description" ? value : Number(value),
             }
           : item
       )
@@ -97,11 +92,8 @@ function Invoices() {
   }
 
   function calculateItemTotal(item) {
-    const subtotal =
-      Number(item.quantity) * Number(item.unit_price);
-
-    const discountAmount =
-      subtotal * Number(item.discount) / 100;
+    const subtotal = Number(item.quantity) * Number(item.unit_price);
+    const discountAmount = (subtotal * Number(item.discount)) / 100;
 
     return subtotal - discountAmount;
   }
@@ -128,7 +120,8 @@ function Invoices() {
       items.some(
         (item) =>
           !item.description.trim() ||
-          Number(item.quantity) <= 0
+          Number(item.quantity) <= 0 ||
+          Number(item.unit_price) <= 0
       )
     ) {
       alert("Popunite ispravno sve stavke.");
@@ -161,9 +154,7 @@ function Invoices() {
         company_id: 1,
         customer_id: "",
         invoice_number: "",
-        invoice_date: new Date()
-          .toISOString()
-          .slice(0, 10),
+        invoice_date: new Date().toISOString().slice(0, 10),
         description: "",
         status: "draft",
         payment_method: "racun",
@@ -181,22 +172,14 @@ function Invoices() {
       await loadData();
     } catch (error) {
       console.error(error);
-
-      alert(
-        error.response?.data?.detail ||
-          "Faktura nije sačuvana."
-      );
+      alert(error.response?.data?.detail || "Faktura nije sačuvana.");
     }
   }
 
   async function handleDelete(invoiceId) {
-    const confirmed = window.confirm(
-      "Da li želite da obrišete fakturu?"
-    );
+    const confirmed = window.confirm("Da li želite da obrišete fakturu?");
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       await deleteInvoice(invoiceId);
@@ -207,18 +190,22 @@ function Invoices() {
     }
   }
 
+  function getCustomerName(customerId) {
+    const customer = customers.find(
+      (c) => Number(c.id) === Number(customerId)
+    );
+
+    return customer ? customer.name : "";
+  }
+
   return (
     <div className="invoice-page">
-      <form
-        className="panel"
-        onSubmit={handleSubmit}
-      >
+      <form className="panel" onSubmit={handleSubmit}>
         <h2>Nova izlazna faktura</h2>
 
         <div className="form-grid">
           <div>
             <label>Broj fakture</label>
-
             <input
               name="invoice_number"
               value={form.invoice_number}
@@ -229,7 +216,6 @@ function Invoices() {
 
           <div>
             <label>Datum fakture</label>
-
             <input
               type="date"
               name="invoice_date"
@@ -240,21 +226,15 @@ function Invoices() {
 
           <div>
             <label>Kupac</label>
-
             <select
               name="customer_id"
               value={form.customer_id}
               onChange={handleFormChange}
             >
-              <option value="">
-                Izaberite kupca
-              </option>
+              <option value="">Izaberite kupca</option>
 
               {customers.map((customer) => (
-                <option
-                  key={customer.id}
-                  value={customer.id}
-                >
+                <option key={customer.id} value={customer.id}>
                   {customer.name}
                 </option>
               ))}
@@ -263,51 +243,32 @@ function Invoices() {
 
           <div>
             <label>Način plaćanja</label>
-
             <select
               name="payment_method"
               value={form.payment_method}
               onChange={handleFormChange}
             >
-              <option value="racun">
-                Račun
-              </option>
-
-              <option value="gotovina">
-                Gotovina
-              </option>
-
-              <option value="kartica">
-                Kartica
-              </option>
+              <option value="racun">Račun</option>
+              <option value="gotovina">Gotovina</option>
+              <option value="kartica">Kartica</option>
             </select>
           </div>
 
           <div>
             <label>Status</label>
-
             <select
               name="status"
               value={form.status}
               onChange={handleFormChange}
             >
-              <option value="draft">
-                Nacrt
-              </option>
-
-              <option value="izdata">
-                Izdata
-              </option>
-
-              <option value="placena">
-                Plaćena
-              </option>
+              <option value="draft">Nacrt</option>
+              <option value="izdata">Izdata</option>
+              <option value="placena">Plaćena</option>
             </select>
           </div>
 
           <div>
             <label>Napomena</label>
-
             <input
               name="description"
               value={form.description}
@@ -356,11 +317,7 @@ function Invoices() {
                       step="0.01"
                       value={item.quantity}
                       onChange={(event) =>
-                        handleItemChange(
-                          index,
-                          "quantity",
-                          event.target.value
-                        )
+                        handleItemChange(index, "quantity", event.target.value)
                       }
                     />
                   </td>
@@ -389,35 +346,15 @@ function Invoices() {
                       step="0.01"
                       value={item.discount}
                       onChange={(event) =>
-                        handleItemChange(
-                          index,
-                          "discount",
-                          event.target.value
-                        )
+                        handleItemChange(index, "discount", event.target.value)
                       }
                     />
                   </td>
 
-                  <td>
-                    {calculateItemTotal(
-                      item
-                    ).toLocaleString(
-                      "sr-RS",
-                      {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }
-                    )}{" "}
-                    RSD
-                  </td>
+                  <td>{formatMoney(calculateItemTotal(item))}</td>
 
                   <td>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeItem(index)
-                      }
-                    >
+                    <button type="button" onClick={() => removeItem(index)}>
                       Obriši
                     </button>
                   </td>
@@ -427,30 +364,15 @@ function Invoices() {
           </table>
         </div>
 
-        <button
-          type="button"
-          onClick={addItem}
-        >
+        <button type="button" onClick={addItem}>
           + Dodaj stavku
         </button>
 
         <div className="invoice-total">
-          Ukupno:{" "}
-          <strong>
-            {invoiceTotal.toLocaleString(
-              "sr-RS",
-              {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }
-            )}{" "}
-            RSD
-          </strong>
+          Ukupno: <strong>{formatMoney(invoiceTotal)}</strong>
         </div>
 
-        <button type="submit">
-          Sačuvaj fakturu
-        </button>
+        <button type="submit">Sačuvaj fakturu</button>
       </form>
 
       <div className="panel">
@@ -462,6 +384,7 @@ function Invoices() {
               <tr>
                 <th>Broj</th>
                 <th>Datum</th>
+                <th>Kupac</th>
                 <th>Iznos</th>
                 <th>Status</th>
                 <th>Akcija</th>
@@ -471,43 +394,20 @@ function Invoices() {
             <tbody>
               {invoices.length === 0 ? (
                 <tr>
-                  <td colSpan="5">
-                    Nema faktura.
-                  </td>
+                  <td colSpan="6">Nema faktura.</td>
                 </tr>
               ) : (
                 invoices.map((invoice) => (
                   <tr key={invoice.id}>
-                    <td>
-                      {invoice.invoice_number}
-                    </td>
-
-                    <td>
-                      {invoice.invoice_date}
-                    </td>
-
-                    <td>
-                      {Number(
-                        invoice.amount
-                      ).toLocaleString(
-                        "sr-RS",
-                        {
-                          minimumFractionDigits: 2,
-                        }
-                      )}{" "}
-                      RSD
-                    </td>
-
+                    <td>{invoice.invoice_number}</td>
+                    <td>{formatDate(invoice.invoice_date)}</td>
+                    <td>{getCustomerName(invoice.customer_id)}</td>
+                    <td>{formatMoney(invoice.amount)}</td>
                     <td>{invoice.status}</td>
-
                     <td>
                       <button
                         type="button"
-                        onClick={() =>
-                          handleDelete(
-                            invoice.id
-                          )
-                        }
+                        onClick={() => handleDelete(invoice.id)}
                       >
                         Obriši
                       </button>
