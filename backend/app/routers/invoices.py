@@ -1,3 +1,5 @@
+from fastapi.responses import FileResponse
+from services.pdf_service import create_invoice_pdf
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -167,6 +169,39 @@ def get_invoice(
         )
 
     return invoice
+@router.get("/{invoice_id}/pdf")
+def download_invoice_pdf(
+    invoice_id: int,
+    db: Session = Depends(get_db)
+):
+    invoice = (
+        db.query(models.Invoice)
+        .filter(models.Invoice.id == invoice_id)
+        .first()
+    )
+
+    if not invoice:
+        raise HTTPException(
+            status_code=404,
+            detail="Faktura nije pronađena."
+        )
+
+    customer = None
+
+    if invoice.customer_id:
+        customer = (
+            db.query(models.Customer)
+            .filter(models.Customer.id == invoice.customer_id)
+            .first()
+        )
+
+    pdf_path = create_invoice_pdf(invoice, customer)
+
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=f"faktura-{invoice.invoice_number}.pdf"
+    )
 
 
 # =====================================

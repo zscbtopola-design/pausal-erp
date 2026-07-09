@@ -9,6 +9,8 @@ import {
 } from "../../api/services/invoices";
 import { formatDate, formatMoney } from "../../utils/format";
 
+const API_URL = "http://127.0.0.1:8000";
+
 function Invoices() {
   const [customers, setCustomers] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -387,6 +389,7 @@ function Invoices() {
                 <th>Kupac</th>
                 <th>Iznos</th>
                 <th>Status</th>
+                <th>PDF</th>
                 <th>Akcija</th>
               </tr>
             </thead>
@@ -394,7 +397,7 @@ function Invoices() {
             <tbody>
               {invoices.length === 0 ? (
                 <tr>
-                  <td colSpan="6">Nema faktura.</td>
+                  <td colSpan="7">Nema faktura.</td>
                 </tr>
               ) : (
                 invoices.map((invoice) => (
@@ -404,6 +407,15 @@ function Invoices() {
                     <td>{getCustomerName(invoice.customer_id)}</td>
                     <td>{formatMoney(invoice.amount)}</td>
                     <td>{invoice.status}</td>
+                    <td>
+                      <a
+                        href={`${API_URL}/invoices/${invoice.id}/pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        PDF
+                      </a>
+                    </td>
                     <td>
                       <button
                         type="button"
