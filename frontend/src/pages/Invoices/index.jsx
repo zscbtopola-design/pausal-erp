@@ -2,184 +2,524 @@ import { useEffect, useState } from "react";
 import "./Invoice.css";
 
 import { getCustomers } from "../../api/services/customers";
-import { getInvoices, addInvoice, deleteInvoice } from "../../api/services/invoices";
-
-import InvoiceForm from "./InvoiceForm";
-import InvoiceTable from "./InvoiceTable";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
+import {
+  getInvoices,
+  addInvoice,
+  deleteInvoice,
+} from "../../api/services/invoices";
 
 function Invoices() {
   const [customers, setCustomers] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [deleteId, setDeleteId] = useState(null);
 
   const [form, setForm] = useState({
     company_id: 1,
     customer_id: "",
     invoice_number: "",
-    invoice_date: "",
+    invoice_date: new Date().toISOString().slice(0, 10),
     description: "",
     status: "draft",
     payment_method: "racun",
-    items: [
-      {
-        description: "",
-        quantity: 1,
-        unit_price: 0,
-        discount: 0,
-      },
-    ],
   });
 
+  const [items, setItems] = useState([
+    {
+      description: "",
+      quantity: 1,
+      unit_price: 0,
+      discount: 0,
+    },
+  ]);
+
   async function loadData() {
-    setCustomers(await getCustomers());
-    setInvoices(await getInvoices());
+    try {
+      const customersData = await getCustomers();
+      const invoicesData = await getInvoices();
+
+      setCustomers(customersData);
+      setInvoices(invoicesData);
+    } catch (error) {
+      console.error(error);
+      alert("Greška pri učitavanju podataka.");
+    }
   }
 
   useEffect(() => {
     loadData();
   }, []);
 
-  function change(e) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  function handleFormChange(event) {
+    const { name, value } = event.target;
+
+    setForm((previousForm) => ({
+      ...previousForm,
+      [name]: value,
+    }));
   }
 
-  function changeItem(index, field, value) {
-    const newItems = [...form.items];
-    newItems[index] = {
-      ...newItems[index],
-      [field]: value,
-    };
-
-    setForm({
-      ...form,
-      items: newItems,
-    });
+  function handleItemChange(index, field, value) {
+    setItems((previousItems) =>
+      previousItems.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              [field]:
+                field === "description"
+                  ? value
+                  : Number(value),
+            }
+          : item
+      )
+    );
   }
 
   function addItem() {
-    setForm({
-      ...form,
-      items: [
-        ...form.items,
-        {
-          description: "",
-          quantity: 1,
-          unit_price: 0,
-          discount: 0,
-        },
-      ],
-    });
+    setItems((previousItems) => [
+      ...previousItems,
+      {
+        description: "",
+        quantity: 1,
+        unit_price: 0,
+        discount: 0,
+      },
+    ]);
   }
 
   function removeItem(index) {
-    const newItems = form.items.filter((_, i) => i !== index);
-
-    setForm({
-      ...form,
-      items: newItems.length ? newItems : [
-        {
-          description: "",
-          quantity: 1,
-          unit_price: 0,
-          discount: 0,
-        },
-      ],
-    });
-  }
-
-  function totalAmount() {
-    return form.items.reduce((sum, item) => {
-      const quantity = Number(item.quantity || 0);
-      const price = Number(item.unit_price || 0);
-      const discount = Number(item.discount || 0);
-      return sum + quantity * price - discount;
-    }, 0);
-  }
-
-  async function save(e) {
-    e.preventDefault();
-
-    if (!form.invoice_number || !form.invoice_date) {
-      alert("Broj fakture i datum su obavezni.");
+    if (items.length === 1) {
+      alert("Faktura mora imati najmanje jednu stavku.");
       return;
     }
 
-    const cleanItems = form.items.filter((i) => i.description.trim());
+    setItems((previousItems) =>
+      previousItems.filter((_, itemIndex) => itemIndex !== index)
+    );
+  }
 
-    if (cleanItems.length === 0) {
-      alert("Faktura mora imati bar jednu stavku.");
+  function calculateItemTotal(item) {
+    const subtotal =
+      Number(item.quantity) * Number(item.unit_price);
+
+    const discountAmount =
+      subtotal * Number(item.discount) / 100;
+
+    return subtotal - discountAmount;
+  }
+
+  const invoiceTotal = items.reduce(
+    (sum, item) => sum + calculateItemTotal(item),
+    0
+  );
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!form.invoice_number.trim()) {
+      alert("Unesite broj fakture.");
       return;
     }
 
-    await addInvoice({
-      ...form,
-      customer_id: form.customer_id ? Number(form.customer_id) : null,
-      items: cleanItems.map((i) => ({
-        description: i.description,
-        quantity: Number(i.quantity || 0),
-        unit_price: Number(i.unit_price || 0),
-        discount: Number(i.discount || 0),
-      })),
-    });
+    if (!form.customer_id) {
+      alert("Izaberite kupca.");
+      return;
+    }
 
-    setForm({
+    if (
+      items.some(
+        (item) =>
+          !item.description.trim() ||
+          Number(item.quantity) <= 0
+      )
+    ) {
+      alert("Popunite ispravno sve stavke.");
+      return;
+    }
+
+    const invoiceData = {
       company_id: 1,
-      customer_id: "",
-      invoice_number: "",
-      invoice_date: "",
-      description: "",
-      status: "draft",
-      payment_method: "racun",
-      items: [
+      customer_id: Number(form.customer_id),
+      invoice_number: form.invoice_number,
+      invoice_date: form.invoice_date,
+      description: form.description || null,
+      amount: invoiceTotal,
+      status: form.status,
+      payment_method: form.payment_method,
+      items: items.map((item) => ({
+        description: item.description,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        discount: Number(item.discount),
+      })),
+    };
+
+    try {
+      await addInvoice(invoiceData);
+
+      alert("Faktura je uspešno sačuvana.");
+
+      setForm({
+        company_id: 1,
+        customer_id: "",
+        invoice_number: "",
+        invoice_date: new Date()
+          .toISOString()
+          .slice(0, 10),
+        description: "",
+        status: "draft",
+        payment_method: "racun",
+      });
+
+      setItems([
         {
           description: "",
           quantity: 1,
           unit_price: 0,
           discount: 0,
         },
-      ],
-    });
+      ]);
 
-    loadData();
+      await loadData();
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error.response?.data?.detail ||
+          "Faktura nije sačuvana."
+      );
+    }
   }
 
-  async function confirmDelete() {
-    await deleteInvoice(deleteId);
-    setDeleteId(null);
-    loadData();
+  async function handleDelete(invoiceId) {
+    const confirmed = window.confirm(
+      "Da li želite da obrišete fakturu?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteInvoice(invoiceId);
+      await loadData();
+    } catch (error) {
+      console.error(error);
+      alert("Faktura nije obrisana.");
+    }
   }
 
   return (
-    <>
-      <InvoiceForm
-        form={form}
-        customers={customers}
-        onChange={change}
-        onItemChange={changeItem}
-        onAddItem={addItem}
-        onRemoveItem={removeItem}
-        onSubmit={save}
-        totalAmount={totalAmount()}
-      />
+    <div className="invoice-page">
+      <form
+        className="panel"
+        onSubmit={handleSubmit}
+      >
+        <h2>Nova izlazna faktura</h2>
 
-      <InvoiceTable
-        invoices={invoices}
-        customers={customers}
-        onDelete={setDeleteId}
-      />
+        <div className="form-grid">
+          <div>
+            <label>Broj fakture</label>
 
-      <ConfirmDialog
-        open={deleteId !== null}
-        title="Brisanje fakture"
-        message="Da li sigurno želiš da obrišeš fakturu?"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteId(null)}
-      />
-    </>
+            <input
+              name="invoice_number"
+              value={form.invoice_number}
+              onChange={handleFormChange}
+              placeholder="Na primer: 1-2026"
+            />
+          </div>
+
+          <div>
+            <label>Datum fakture</label>
+
+            <input
+              type="date"
+              name="invoice_date"
+              value={form.invoice_date}
+              onChange={handleFormChange}
+            />
+          </div>
+
+          <div>
+            <label>Kupac</label>
+
+            <select
+              name="customer_id"
+              value={form.customer_id}
+              onChange={handleFormChange}
+            >
+              <option value="">
+                Izaberite kupca
+              </option>
+
+              {customers.map((customer) => (
+                <option
+                  key={customer.id}
+                  value={customer.id}
+                >
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label>Način plaćanja</label>
+
+            <select
+              name="payment_method"
+              value={form.payment_method}
+              onChange={handleFormChange}
+            >
+              <option value="racun">
+                Račun
+              </option>
+
+              <option value="gotovina">
+                Gotovina
+              </option>
+
+              <option value="kartica">
+                Kartica
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label>Status</label>
+
+            <select
+              name="status"
+              value={form.status}
+              onChange={handleFormChange}
+            >
+              <option value="draft">
+                Nacrt
+              </option>
+
+              <option value="izdata">
+                Izdata
+              </option>
+
+              <option value="placena">
+                Plaćena
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label>Napomena</label>
+
+            <input
+              name="description"
+              value={form.description}
+              onChange={handleFormChange}
+              placeholder="Napomena"
+            />
+          </div>
+        </div>
+
+        <h2>Stavke fakture</h2>
+
+        <div className="invoice-table-wrapper">
+          <table className="invoice-items-table">
+            <thead>
+              <tr>
+                <th>Opis</th>
+                <th>Količina</th>
+                <th>Cena</th>
+                <th>Popust %</th>
+                <th>Ukupno</th>
+                <th>Akcija</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {items.map((item, index) => (
+                <tr key={index}>
+                  <td>
+                    <input
+                      value={item.description}
+                      onChange={(event) =>
+                        handleItemChange(
+                          index,
+                          "description",
+                          event.target.value
+                        )
+                      }
+                      placeholder="Opis usluge"
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={item.quantity}
+                      onChange={(event) =>
+                        handleItemChange(
+                          index,
+                          "quantity",
+                          event.target.value
+                        )
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.unit_price}
+                      onChange={(event) =>
+                        handleItemChange(
+                          index,
+                          "unit_price",
+                          event.target.value
+                        )
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={item.discount}
+                      onChange={(event) =>
+                        handleItemChange(
+                          index,
+                          "discount",
+                          event.target.value
+                        )
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    {calculateItemTotal(
+                      item
+                    ).toLocaleString(
+                      "sr-RS",
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }
+                    )}{" "}
+                    RSD
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeItem(index)
+                      }
+                    >
+                      Obriši
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <button
+          type="button"
+          onClick={addItem}
+        >
+          + Dodaj stavku
+        </button>
+
+        <div className="invoice-total">
+          Ukupno:{" "}
+          <strong>
+            {invoiceTotal.toLocaleString(
+              "sr-RS",
+              {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }
+            )}{" "}
+            RSD
+          </strong>
+        </div>
+
+        <button type="submit">
+          Sačuvaj fakturu
+        </button>
+      </form>
+
+      <div className="panel">
+        <h2>Izlazne fakture</h2>
+
+        <div className="invoice-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Broj</th>
+                <th>Datum</th>
+                <th>Iznos</th>
+                <th>Status</th>
+                <th>Akcija</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {invoices.length === 0 ? (
+                <tr>
+                  <td colSpan="5">
+                    Nema faktura.
+                  </td>
+                </tr>
+              ) : (
+                invoices.map((invoice) => (
+                  <tr key={invoice.id}>
+                    <td>
+                      {invoice.invoice_number}
+                    </td>
+
+                    <td>
+                      {invoice.invoice_date}
+                    </td>
+
+                    <td>
+                      {Number(
+                        invoice.amount
+                      ).toLocaleString(
+                        "sr-RS",
+                        {
+                          minimumFractionDigits: 2,
+                        }
+                      )}{" "}
+                      RSD
+                    </td>
+
+                    <td>{invoice.status}</td>
+
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDelete(
+                            invoice.id
+                          )
+                        }
+                      >
+                        Obriši
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
 

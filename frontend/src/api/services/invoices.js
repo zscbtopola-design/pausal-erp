@@ -5,6 +5,11 @@ export async function getInvoices() {
   return data;
 }
 
+export async function getInvoice(id) {
+  const { data } = await client.get(`/invoices/${id}`);
+  return data;
+}
+
 export async function addInvoice(invoice) {
   const { data } = await client.post("/invoices", invoice);
   return data;

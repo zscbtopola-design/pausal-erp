@@ -1,6 +1,10 @@
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+
+# =========================
+# FIRME
+# =========================
 
 class CompanyCreate(BaseModel):
     name: str
@@ -16,6 +20,10 @@ class CompanyOut(CompanyCreate):
     class Config:
         from_attributes = True
 
+
+# =========================
+# KUPCI
+# =========================
 
 class CustomerCreate(BaseModel):
     company_id: int
@@ -33,6 +41,10 @@ class CustomerOut(CustomerCreate):
         from_attributes = True
 
 
+# =========================
+# DOBAVLJAČI
+# =========================
+
 class SupplierCreate(CustomerCreate):
     pass
 
@@ -43,6 +55,10 @@ class SupplierOut(SupplierCreate):
     class Config:
         from_attributes = True
 
+
+# =========================
+# PRIHODI
+# =========================
 
 class IncomeCreate(BaseModel):
     company_id: int
@@ -62,6 +78,10 @@ class IncomeOut(IncomeCreate):
         from_attributes = True
 
 
+# =========================
+# RASHODI
+# =========================
+
 class ExpenseCreate(BaseModel):
     company_id: int
     supplier_id: int | None = None
@@ -76,6 +96,10 @@ class ExpenseOut(ExpenseCreate):
     class Config:
         from_attributes = True
 
+
+# =========================
+# STAVKE FAKTURE
+# =========================
 
 class InvoiceItemCreate(BaseModel):
     description: str
@@ -93,28 +117,41 @@ class InvoiceItemOut(InvoiceItemCreate):
         from_attributes = True
 
 
+# =========================
+# FAKTURE
+# =========================
+
 class InvoiceCreate(BaseModel):
     company_id: int
     customer_id: int | None = None
+
     invoice_number: str
     invoice_date: date
+
     description: str | None = None
+    amount: float = 0
+
     status: str = "draft"
     payment_method: str = "racun"
-    items: list[InvoiceItemCreate] = []
+
+    items: list[InvoiceItemCreate] = Field(default_factory=list)
 
 
 class InvoiceOut(BaseModel):
     id: int
     company_id: int
     customer_id: int | None = None
+
     invoice_number: str
     invoice_date: date
+
     description: str | None = None
     amount: float
+
     status: str
     payment_method: str
-    items: list[InvoiceItemOut] = []
+
+    items: list[InvoiceItemOut] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

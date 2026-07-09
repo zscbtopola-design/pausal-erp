@@ -53,6 +53,7 @@ class Income(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"))
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
+
     date = Column(Date, nullable=False)
     invoice_number = Column(String, nullable=True)
     payment_method = Column(String, default="racun")
@@ -69,6 +70,7 @@ class Expense(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"))
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+
     date = Column(Date, nullable=False)
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
@@ -102,12 +104,20 @@ class InvoiceItem(Base):
     __tablename__ = "invoice_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    invoice_id = Column(Integer, ForeignKey("invoices.id"))
+
+    invoice_id = Column(
+        Integer,
+        ForeignKey("invoices.id"),
+        nullable=False
+    )
 
     description = Column(String, nullable=False)
-    quantity = Column(Float, default=1)
-    unit_price = Column(Float, default=0)
-    discount = Column(Float, default=0)
-    total = Column(Float, default=0)
+    quantity = Column(Float, nullable=False, default=1)
+    unit_price = Column(Float, nullable=False, default=0)
+    discount = Column(Float, nullable=False, default=0)
+    total = Column(Float, nullable=False, default=0)
 
-    invoice = relationship("Invoice", back_populates="items")
+    invoice = relationship(
+        "Invoice",
+        back_populates="items"
+    )

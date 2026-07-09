@@ -5,70 +5,75 @@ import models
 import schemas
 from database import get_db
 
+
 router = APIRouter(
     prefix="/invoices",
     tags=["Invoices"]
 )
 
 
-def calculate_item_total(quantity: float, unit_price: float, discount: float) -> float:
-    subtotal = quantity * unit_price
-    return subtotal - discount
-
-
 @router.post("", response_model=schemas.InvoiceOut)
-def create_invoice(invoice: schemas.InvoiceCreate, db: Session = Depends(get_db)):
-    total_amount = 0
+def create_invoice(
+    invoice_data: schemas.InvoiceCreate,
+    db: Session = Depends(get_db)
+):
+    # Provera da li već postoji isti broj fakture
+    existing_invoice = (
+        db.query(models.Invoice)
+        .filter(
+            models.Invoice.company_id == invoice_data.company_id,
+            models.Invoice.invoice_number == invoice_data.invoice_number
+        )
+        .first()
+    )
 
+    if existing_invoice:
+        raise HTTPException(
+            status_code=400,
+            detail="Faktura sa ovim brojem već postoji."
+        )
+
+    # Kreiranje zaglavlja fakture
     new_invoice = models.Invoice(
-        company_id=invoice.company_id,
-        customer_id=invoice.customer_id,
-        invoice_number=invoice.invoice_number,
-        invoice_date=invoice.invoice_date,
-        description=invoice.description,
-        status=invoice.status,
-        payment_method=invoice.payment_method,
+        company_id=invoice_data.company_id,
+        customer_id=invoice_data.customer_id,
+        invoice_number=invoice_data.invoice_number,
+        invoice_date=invoice_data.invoice_date,
+        description=invoice_data.description,
         amount=0,
+        status=invoice_data.status,
+        payment_method=invoice_data.payment_method
     )
 
     db.add(new_invoice)
-    db.commit()
-    db.refresh(new_invoice)
+    db.flush()
 
-    for item in invoice.items:
-        item_total = calculate_item_total(
-            item.quantity,
-            item.unit_price,
-            item.discount
-        )
+    invoice_total = 0
 
-        total_amount += item_total
+    # Kreiranje svih stavki fakture
+    for item_data in invoice_data.items:
+        quantity = item_data.quantity
+        unit_price = item_data.unit_price
+        discount = item_data.discount
+
+        subtotal = quantity * unit_price
+        discount_amount = subtotal * discount / 100
+        item_total = subtotal - discount_amount
 
         new_item = models.InvoiceItem(
             invoice_id=new_invoice.id,
-            description=item.description,
-            quantity=item.quantity,
-            unit_price=item.unit_price,
-            discount=item.discount,
-            total=item_total,
+            description=item_data.description,
+            quantity=quantity,
+            unit_price=unit_price,
+            discount=discount,
+            total=item_total
         )
 
         db.add(new_item)
+        invoice_total += item_total
 
-    new_invoice.amount = total_amount
-
-    if invoice.status == "issued":
-        income = models.Income(
-            company_id=invoice.company_id,
-            customer_id=invoice.customer_id,
-            date=invoice.invoice_date,
-            invoice_number=invoice.invoice_number,
-            payment_method=invoice.payment_method,
-            status="placeno",
-            description=invoice.description or "Izlazna faktura",
-            amount=total_amount,
-        )
-        db.add(income)
+    # Ukupan iznos računa backend računa automatski
+    new_invoice.amount = invoice_total
 
     db.commit()
     db.refresh(new_invoice)
@@ -78,27 +83,53 @@ def create_invoice(invoice: schemas.InvoiceCreate, db: Session = Depends(get_db)
 
 @router.get("", response_model=list[schemas.InvoiceOut])
 def get_invoices(db: Session = Depends(get_db)):
-    return db.query(models.Invoice).all()
+    return (
+        db.query(models.Invoice)
+        .order_by(models.Invoice.id.desc())
+        .all()
+    )
 
 
 @router.get("/{invoice_id}", response_model=schemas.InvoiceOut)
-def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
-    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+def get_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db)
+):
+    invoice = (
+        db.query(models.Invoice)
+        .filter(models.Invoice.id == invoice_id)
+        .first()
+    )
 
     if not invoice:
-        raise HTTPException(status_code=404, detail="Faktura nije pronađena")
+        raise HTTPException(
+            status_code=404,
+            detail="Faktura nije pronađena."
+        )
 
     return invoice
 
 
 @router.delete("/{invoice_id}")
-def delete_invoice(invoice_id: int, db: Session = Depends(get_db)):
-    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+def delete_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db)
+):
+    invoice = (
+        db.query(models.Invoice)
+        .filter(models.Invoice.id == invoice_id)
+        .first()
+    )
 
     if not invoice:
-        raise HTTPException(status_code=404, detail="Faktura nije pronađena")
+        raise HTTPException(
+            status_code=404,
+            detail="Faktura nije pronađena."
+        )
 
     db.delete(invoice)
     db.commit()
 
-    return {"message": "Faktura je obrisana"}
+    return {
+        "message": "Faktura i njene stavke su obrisane."
+    }
