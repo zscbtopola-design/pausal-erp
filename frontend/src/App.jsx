@@ -8,6 +8,7 @@ import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
 import Incomes from "./pages/Incomes";
 import Invoices from "./pages/Invoices";
+import CompanySettings from "./pages/CompanySettings";
 import Placeholder from "./pages/Placeholder";
 
 function App() {
@@ -79,6 +80,15 @@ function App() {
       />
 
       <Route
+        path="/company-settings"
+        element={
+          <MainLayout title="Podešavanja firme">
+            <CompanySettings />
+          </MainLayout>
+        }
+      />
+
+      <Route
         path="/settings"
         element={
           <MainLayout title="Podešavanja">
@@ -86,8 +96,12 @@ function App() {
           </MainLayout>
         }
       />
+
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
 
 export default App;
+
+    

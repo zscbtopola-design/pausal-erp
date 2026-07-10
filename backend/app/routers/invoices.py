@@ -1,29 +1,30 @@
-from fastapi.responses import FileResponse
-from services.pdf_service import create_invoice_pdf
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 import models
 import schemas
 from database import get_db
+from services.pdf_service import create_invoice_pdf
 
 
 router = APIRouter(
     prefix="/invoices",
-    tags=["Invoices"]
+    tags=["Invoices"],
 )
 
 
-# =====================================
-# KREIRANJE FAKTURE I PRIHODA
-# =====================================
+# =====================================================
+# KREIRANJE FAKTURE, STAVKI I POVEZANOG PRIHODA
+# =====================================================
 
 @router.post("", response_model=schemas.InvoiceOut)
 def create_invoice(
     invoice_data: schemas.InvoiceCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Provera da li već postoji isti broj fakture
     existing_invoice = (
         db.query(models.Invoice)
         .filter(
@@ -36,10 +37,15 @@ def create_invoice(
     if existing_invoice:
         raise HTTPException(
             status_code=400,
-            detail="Faktura sa ovim brojem već postoji."
+            detail="Faktura sa ovim brojem već postoji.",
         )
 
-    # Kreiranje zaglavlja fakture
+    if not invoice_data.items:
+        raise HTTPException(
+            status_code=400,
+            detail="Faktura mora imati najmanje jednu stavku.",
+        )
+
     new_invoice = models.Invoice(
         company_id=invoice_data.company_id,
         customer_id=invoice_data.customer_id,
@@ -52,29 +58,32 @@ def create_invoice(
     )
 
     db.add(new_invoice)
-
-    # Dobijamo ID nove fakture pre čuvanja
     db.flush()
 
     invoice_total = 0
 
-    # Kreiranje svih stavki fakture
     for item_data in invoice_data.items:
-        subtotal = (
-            item_data.quantity
-            * item_data.unit_price
-        )
+        if item_data.quantity <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Količina mora biti veća od nule.",
+            )
 
-        discount_amount = (
-            subtotal
-            * item_data.discount
-            / 100
-        )
+        if item_data.unit_price < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Cena ne može biti negativna.",
+            )
 
-        item_total = (
-            subtotal
-            - discount_amount
-        )
+        if item_data.discount < 0 or item_data.discount > 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Popust mora biti između 0 i 100 procenata.",
+            )
+
+        subtotal = item_data.quantity * item_data.unit_price
+        discount_amount = subtotal * item_data.discount / 100
+        item_total = subtotal - discount_amount
 
         new_item = models.InvoiceItem(
             invoice_id=new_invoice.id,
@@ -86,13 +95,10 @@ def create_invoice(
         )
 
         db.add(new_item)
-
         invoice_total += item_total
 
-    # Backend automatski računa ukupan iznos
     new_invoice.amount = invoice_total
 
-    # Automatsko kreiranje prihoda
     new_income = models.Income(
         company_id=new_invoice.company_id,
         customer_id=new_invoice.customer_id,
@@ -113,66 +119,80 @@ def create_invoice(
 
     db.add(new_income)
 
-    # Čuvanje fakture, stavki i prihoda
-    db.commit()
-
-    db.refresh(new_invoice)
+    try:
+        db.commit()
+        db.refresh(new_invoice)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Greška pri čuvanju fakture.",
+        )
 
     return new_invoice
 
 
-# =====================================
+# =====================================================
 # PRIKAZ SVIH FAKTURA
-# =====================================
+# =====================================================
 
-@router.get(
-    "",
-    response_model=list[schemas.InvoiceOut]
-)
-def get_invoices(
-    db: Session = Depends(get_db)
-):
+@router.get("", response_model=list[schemas.InvoiceOut])
+def get_invoices(db: Session = Depends(get_db)):
     return (
         db.query(models.Invoice)
-        .order_by(
-            models.Invoice.id.desc()
-        )
+        .order_by(models.Invoice.id.desc())
         .all()
     )
 
 
-# =====================================
-# PRIKAZ JEDNE FAKTURE
-# =====================================
+# =====================================================
+# AUTOMATSKI SLEDEĆI BROJ FAKTURE
+# Važno: ruta mora biti pre /{invoice_id}
+# =====================================================
 
-@router.get(
-    "/{invoice_id}",
-    response_model=schemas.InvoiceOut
-)
-def get_invoice(
-    invoice_id: int,
-    db: Session = Depends(get_db)
+@router.get("/next-number")
+def get_next_invoice_number(
+    company_id: int = 1,
+    db: Session = Depends(get_db),
 ):
-    invoice = (
+    current_year = date.today().year
+    suffix = f"-{current_year}"
+
+    invoices = (
         db.query(models.Invoice)
         .filter(
-            models.Invoice.id
-            == invoice_id
+            models.Invoice.company_id == company_id,
+            models.Invoice.invoice_number.like(f"%{suffix}"),
         )
-        .first()
+        .all()
     )
 
-    if not invoice:
-        raise HTTPException(
-            status_code=404,
-            detail="Faktura nije pronađena."
-        )
+    highest_number = 0
 
-    return invoice
+    for invoice in invoices:
+        try:
+            number_part = invoice.invoice_number.rsplit("-", 1)[0]
+            number_value = int(number_part)
+
+            if number_value > highest_number:
+                highest_number = number_value
+        except (ValueError, AttributeError):
+            continue
+
+    return {
+        "invoice_number": f"{highest_number + 1}-{current_year}"
+    }
+
+
+# =====================================================
+# PDF FAKTURE
+# Važno: ruta mora biti pre /{invoice_id}
+# =====================================================
+
 @router.get("/{invoice_id}/pdf")
 def download_invoice_pdf(
     invoice_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     invoice = (
         db.query(models.Invoice)
@@ -183,7 +203,7 @@ def download_invoice_pdf(
     if not invoice:
         raise HTTPException(
             status_code=404,
-            detail="Faktura nije pronađena."
+            detail="Faktura nije pronađena.",
         )
 
     customer = None
@@ -195,67 +215,95 @@ def download_invoice_pdf(
             .first()
         )
 
-    pdf_path = create_invoice_pdf(invoice, customer)
+    try:
+        pdf_path = create_invoice_pdf(invoice, customer)
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Greška pri generisanju PDF-a: {error}",
+        )
+
+    safe_invoice_number = (
+        invoice.invoice_number
+        .replace("/", "-")
+        .replace("\\", "-")
+    )
 
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",
-        filename=f"faktura-{invoice.invoice_number}.pdf"
+        filename=f"faktura-{safe_invoice_number}.pdf",
     )
 
 
-# =====================================
-# BRISANJE FAKTURE I PRIHODA
-# =====================================
+# =====================================================
+# PRIKAZ JEDNE FAKTURE
+# =====================================================
 
-@router.delete("/{invoice_id}")
-def delete_invoice(
+@router.get("/{invoice_id}", response_model=schemas.InvoiceOut)
+def get_invoice(
     invoice_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Pronalaženje fakture
     invoice = (
         db.query(models.Invoice)
-        .filter(
-            models.Invoice.id
-            == invoice_id
-        )
+        .filter(models.Invoice.id == invoice_id)
         .first()
     )
 
     if not invoice:
         raise HTTPException(
             status_code=404,
-            detail="Faktura nije pronađena."
+            detail="Faktura nije pronađena.",
         )
 
-    # Pronalaženje prihoda koji je
-    # automatski napravljen iz fakture
+    return invoice
+
+
+# =====================================================
+# BRISANJE FAKTURE, STAVKI I POVEZANOG PRIHODA
+# =====================================================
+
+@router.delete("/{invoice_id}")
+def delete_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+):
+    invoice = (
+        db.query(models.Invoice)
+        .filter(models.Invoice.id == invoice_id)
+        .first()
+    )
+
+    if not invoice:
+        raise HTTPException(
+            status_code=404,
+            detail="Faktura nije pronađena.",
+        )
+
     income = (
         db.query(models.Income)
         .filter(
-            models.Income.company_id
-            == invoice.company_id,
-
-            models.Income.invoice_number
-            == invoice.invoice_number,
+            models.Income.company_id == invoice.company_id,
+            models.Income.invoice_number == invoice.invoice_number,
         )
         .first()
     )
 
-    # Brisanje povezanog prihoda
     if income:
         db.delete(income)
 
-    # Brisanje fakture
-    # Stavke se brišu automatski zbog:
-    # cascade="all, delete-orphan"
     db.delete(invoice)
 
-    # Čuvanje svih promena
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Greška pri brisanju fakture.",
+        )
 
     return {
-        "message":
-        "Faktura, stavke i povezani prihod su obrisani."
+        "message": "Faktura, stavke i povezani prihod su obrisani."
     }
