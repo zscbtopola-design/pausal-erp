@@ -16,27 +16,29 @@ from reportlab.platypus import (
 
 
 def format_money(value):
-    return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    number = float(value or 0)
 
-
-def create_invoice_pdf(invoice, customer):
-    # Folder u koji se čuvaju PDF fakture
-    output_folder = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "..",
-        "uploads",
-        "invoices",
+    return (
+        f"{number:,.2f}"
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
     )
 
-    output_folder = os.path.abspath(output_folder)
 
-    os.makedirs(
-        output_folder,
-        exist_ok=True,
+def create_invoice_pdf(invoice, customer, company):
+    output_folder = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "uploads",
+            "invoices",
+        )
     )
 
-    # Bezbedno ime PDF fajla
+    os.makedirs(output_folder, exist_ok=True)
+
     safe_invoice_number = (
         invoice.invoice_number
         .replace("/", "-")
@@ -48,29 +50,27 @@ def create_invoice_pdf(invoice, customer):
         f"faktura-{safe_invoice_number}.pdf",
     )
 
-    # Font koji podržava č, ć, š, ž i đ
     font_path = "C:/Windows/Fonts/arial.ttf"
 
     if os.path.exists(font_path):
-        pdfmetrics.registerFont(
-            TTFont(
-                "ERPFont",
-                font_path,
+        try:
+            pdfmetrics.registerFont(
+                TTFont("ERPFont", font_path)
             )
-        )
+        except Exception:
+            pass
 
         font_name = "ERPFont"
-
     else:
         font_name = "Helvetica"
 
     document = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        rightMargin=20 * mm,
-        leftMargin=20 * mm,
-        topMargin=20 * mm,
-        bottomMargin=20 * mm,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
     )
 
     styles = getSampleStyleSheet()
@@ -81,50 +81,53 @@ def create_invoice_pdf(invoice, customer):
 
     elements = []
 
-    elements.append(
-        Paragraph(
-            "IZLAZNA FAKTURA",
-            styles["Title"],
-        )
+    company_name = company.name if company else "Naziv firme"
+    company_pib = company.pib if company and company.pib else ""
+    company_mb = company.mb if company and company.mb else ""
+    company_address = (
+        company.address
+        if company and company.address
+        else ""
     )
 
-    elements.append(
-        Spacer(
-            1,
-            10 * mm,
-        )
-    )
-
-    invoice_information = [
+    company_data = [
         [
-            "Broj fakture:",
-            invoice.invoice_number,
-        ],
-        [
-            "Datum:",
-            invoice.invoice_date.strftime(
-                "%d.%m.%Y."
+            Paragraph(
+                f"<b>{company_name}</b>",
+                styles["Heading2"],
+            ),
+            Paragraph(
+                "<b>IZLAZNA FAKTURA</b>",
+                styles["Heading2"],
             ),
         ],
         [
-            "Način plaćanja:",
-            invoice.payment_method,
+            f"Adresa: {company_address}",
+            f"Broj: {invoice.invoice_number}",
         ],
         [
-            "Status:",
-            invoice.status,
+            f"PIB: {company_pib}",
+            (
+                "Datum: "
+                f"{invoice.invoice_date.strftime('%d.%m.%Y.')}"
+            ),
+        ],
+        [
+            f"Matični broj: {company_mb}",
+            f"Način plaćanja: {invoice.payment_method}",
+        ],
+        [
+            "",
+            f"Status: {invoice.status}",
         ],
     ]
 
-    invoice_table = Table(
-        invoice_information,
-        colWidths=[
-            50 * mm,
-            100 * mm,
-        ],
+    company_table = Table(
+        company_data,
+        colWidths=[90 * mm, 80 * mm],
     )
 
-    invoice_table.setStyle(
+    company_table.setStyle(
         TableStyle(
             [
                 (
@@ -134,69 +137,59 @@ def create_invoice_pdf(invoice, customer):
                     font_name,
                 ),
                 (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "TOP",
+                ),
+                (
+                    "ALIGN",
+                    (1, 0),
+                    (1, -1),
+                    "RIGHT",
+                ),
+                (
                     "BOTTOMPADDING",
                     (0, 0),
                     (-1, -1),
                     6,
                 ),
+                (
+                    "LINEBELOW",
+                    (0, -1),
+                    (-1, -1),
+                    1,
+                    colors.grey,
+                ),
             ]
         )
     )
 
-    elements.append(invoice_table)
+    elements.append(company_table)
+    elements.append(Spacer(1, 10 * mm))
 
-    elements.append(
-        Spacer(
-            1,
-            8 * mm,
-        )
-    )
-
-    customer_name = (
-        customer.name
-        if customer
-        else ""
-    )
-
+    customer_name = customer.name if customer else ""
     customer_pib = (
         customer.pib
-        if customer
-        and customer.pib
+        if customer and customer.pib
         else ""
     )
-
     customer_address = (
         customer.address
-        if customer
-        and customer.address
+        if customer and customer.address
         else ""
     )
 
-    customer_information = [
-        [
-            "KUPAC",
-            "",
-        ],
-        [
-            "Naziv:",
-            customer_name,
-        ],
-        [
-            "PIB:",
-            customer_pib,
-        ],
-        [
-            "Adresa:",
-            customer_address,
-        ],
+    customer_data = [
+        ["KUPAC", ""],
+        ["Naziv:", customer_name],
+        ["PIB:", customer_pib],
+        ["Adresa:", customer_address],
     ]
 
     customer_table = Table(
-        customer_information,
-        colWidths=[
-            50 * mm,
-            100 * mm,
-        ],
+        customer_data,
+        colWidths=[45 * mm, 125 * mm],
     )
 
     customer_table.setStyle(
@@ -206,12 +199,6 @@ def create_invoice_pdf(invoice, customer):
                     "FONTNAME",
                     (0, 0),
                     (-1, -1),
-                    font_name,
-                ),
-                (
-                    "FONTNAME",
-                    (0, 0),
-                    (-1, 0),
                     font_name,
                 ),
                 (
@@ -226,7 +213,20 @@ def create_invoice_pdf(invoice, customer):
                     (1, 0),
                 ),
                 (
+                    "GRID",
+                    (0, 0),
+                    (-1, -1),
+                    0.5,
+                    colors.grey,
+                ),
+                (
                     "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    6,
+                ),
+                (
+                    "TOPPADDING",
                     (0, 0),
                     (-1, -1),
                     6,
@@ -236,13 +236,7 @@ def create_invoice_pdf(invoice, customer):
     )
 
     elements.append(customer_table)
-
-    elements.append(
-        Spacer(
-            1,
-            10 * mm,
-        )
-    )
+    elements.append(Spacer(1, 10 * mm))
 
     items_data = [
         [
@@ -258,26 +252,20 @@ def create_invoice_pdf(invoice, customer):
         items_data.append(
             [
                 item.description,
-                format_money(
-                    item.quantity
-                ),
-                format_money(
-                    item.unit_price
-                ),
+                format_money(item.quantity),
+                f"{format_money(item.unit_price)} RSD",
                 f"{format_money(item.discount)} %",
-                format_money(
-                    item.total
-                ),
+                f"{format_money(item.total)} RSD",
             ]
         )
 
     items_table = Table(
         items_data,
         colWidths=[
-            65 * mm,
+            62 * mm,
             22 * mm,
-            28 * mm,
-            22 * mm,
+            30 * mm,
+            23 * mm,
             33 * mm,
         ],
         repeatRows=1,
@@ -334,28 +322,16 @@ def create_invoice_pdf(invoice, customer):
     )
 
     elements.append(items_table)
-
-    elements.append(
-        Spacer(
-            1,
-            10 * mm,
-        )
-    )
+    elements.append(Spacer(1, 10 * mm))
 
     total_table = Table(
         [
             [
-                "UKUPNO:",
-                (
-                    f"{format_money(invoice.amount)} "
-                    "RSD"
-                ),
+                "UKUPNO ZA PLAĆANJE:",
+                f"{format_money(invoice.amount)} RSD",
             ]
         ],
-        colWidths=[
-            100 * mm,
-            70 * mm,
-        ],
+        colWidths=[100 * mm, 70 * mm],
     )
 
     total_table.setStyle(
@@ -380,6 +356,19 @@ def create_invoice_pdf(invoice, customer):
                     14,
                 ),
                 (
+                    "LINEABOVE",
+                    (0, 0),
+                    (-1, 0),
+                    1,
+                    colors.black,
+                ),
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    8,
+                ),
+                (
                     "BOTTOMPADDING",
                     (0, 0),
                     (-1, -1),
@@ -392,22 +381,23 @@ def create_invoice_pdf(invoice, customer):
     elements.append(total_table)
 
     if invoice.description:
-        elements.append(
-            Spacer(
-                1,
-                10 * mm,
-            )
-        )
+        elements.append(Spacer(1, 8 * mm))
 
         elements.append(
             Paragraph(
-                (
-                    "<b>Napomena:</b> "
-                    f"{invoice.description}"
-                ),
+                f"<b>Napomena:</b> {invoice.description}",
                 styles["Normal"],
             )
         )
+
+    elements.append(Spacer(1, 18 * mm))
+
+    elements.append(
+        Paragraph(
+            "Faktura je generisana elektronski.",
+            styles["Normal"],
+        )
+    )
 
     document.build(elements)
 

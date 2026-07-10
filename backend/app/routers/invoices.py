@@ -124,6 +124,7 @@ def create_invoice(
         db.refresh(new_invoice)
     except Exception:
         db.rollback()
+
         raise HTTPException(
             status_code=500,
             detail="Greška pri čuvanju fakture.",
@@ -137,7 +138,9 @@ def create_invoice(
 # =====================================================
 
 @router.get("", response_model=list[schemas.InvoiceOut])
-def get_invoices(db: Session = Depends(get_db)):
+def get_invoices(
+    db: Session = Depends(get_db),
+):
     return (
         db.query(models.Invoice)
         .order_by(models.Invoice.id.desc())
@@ -147,7 +150,6 @@ def get_invoices(db: Session = Depends(get_db)):
 
 # =====================================================
 # AUTOMATSKI SLEDEĆI BROJ FAKTURE
-# Važno: ruta mora biti pre /{invoice_id}
 # =====================================================
 
 @router.get("/next-number")
@@ -176,6 +178,7 @@ def get_next_invoice_number(
 
             if number_value > highest_number:
                 highest_number = number_value
+
         except (ValueError, AttributeError):
             continue
 
@@ -186,7 +189,6 @@ def get_next_invoice_number(
 
 # =====================================================
 # PDF FAKTURE
-# Važno: ruta mora biti pre /{invoice_id}
 # =====================================================
 
 @router.get("/{invoice_id}/pdf")
@@ -215,8 +217,25 @@ def download_invoice_pdf(
             .first()
         )
 
+    company = (
+        db.query(models.Company)
+        .filter(models.Company.id == invoice.company_id)
+        .first()
+    )
+
+    if not company:
+        raise HTTPException(
+            status_code=404,
+            detail="Firma nije pronađena.",
+        )
+
     try:
-        pdf_path = create_invoice_pdf(invoice, customer)
+        pdf_path = create_invoice_pdf(
+            invoice,
+            customer,
+            company,
+        )
+
     except Exception as error:
         raise HTTPException(
             status_code=500,
@@ -297,8 +316,10 @@ def delete_invoice(
 
     try:
         db.commit()
+
     except Exception:
         db.rollback()
+
         raise HTTPException(
             status_code=500,
             detail="Greška pri brisanju fakture.",
