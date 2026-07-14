@@ -1,4 +1,5 @@
 from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -11,6 +12,11 @@ class CompanyCreate(BaseModel):
     pib: str | None = None
     mb: str | None = None
     address: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    bank_name: str | None = None
+    bank_account: str | None = None
+    logo_path: str | None = None
     limit_amount: float = 6000000
 
 
@@ -124,16 +130,12 @@ class InvoiceItemOut(InvoiceItemCreate):
 class InvoiceCreate(BaseModel):
     company_id: int
     customer_id: int | None = None
-
     invoice_number: str
     invoice_date: date
-
     description: str | None = None
     amount: float = 0
-
     status: str = "draft"
     payment_method: str = "racun"
-
     items: list[InvoiceItemCreate] = Field(default_factory=list)
 
 
@@ -141,16 +143,12 @@ class InvoiceOut(BaseModel):
     id: int
     company_id: int
     customer_id: int | None = None
-
     invoice_number: str
     invoice_date: date
-
     description: str | None = None
     amount: float
-
     status: str
     payment_method: str
-
     items: list[InvoiceItemOut] = Field(default_factory=list)
 
     class Config:

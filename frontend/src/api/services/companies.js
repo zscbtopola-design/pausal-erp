@@ -19,3 +19,21 @@ export async function updateCompany(id, company) {
   const { data } = await client.put(`/companies/${id}`, company);
   return data;
 }
+
+export async function uploadCompanyLogo(companyId, file) {
+  const formData = new FormData();
+
+  formData.append("logo", file);
+
+  const { data } = await client.post(
+    `/companies/${companyId}/logo`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return data;
+}

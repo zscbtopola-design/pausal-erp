@@ -11,6 +11,11 @@ class Company(Base):
     pib = Column(String, nullable=True)
     mb = Column(String, nullable=True)
     address = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    bank_name = Column(String, nullable=True)
+    bank_account = Column(String, nullable=True)
+    logo_path = Column(String, nullable=True)
     limit_amount = Column(Float, default=6000000)
 
     customers = relationship("Customer", back_populates="company")

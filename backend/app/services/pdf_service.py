@@ -4,11 +4,12 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    SimpleDocTemplate,
+    Image,
     Paragraph,
+    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
@@ -24,6 +25,10 @@ def format_money(value):
         .replace(".", ",")
         .replace("X", ".")
     )
+
+
+def value_or_empty(value):
+    return value if value else ""
 
 
 def create_invoice_pdf(invoice, customer, company):
@@ -82,52 +87,110 @@ def create_invoice_pdf(invoice, customer, company):
     elements = []
 
     company_name = company.name if company else "Naziv firme"
-    company_pib = company.pib if company and company.pib else ""
-    company_mb = company.mb if company and company.mb else ""
-    company_address = (
-        company.address
-        if company and company.address
-        else ""
+    company_pib = value_or_empty(company.pib if company else None)
+    company_mb = value_or_empty(company.mb if company else None)
+    company_address = value_or_empty(company.address if company else None)
+    company_phone = value_or_empty(company.phone if company else None)
+    company_email = value_or_empty(company.email if company else None)
+    company_bank_name = value_or_empty(
+        company.bank_name if company else None
+    )
+    company_bank_account = value_or_empty(
+        company.bank_account if company else None
     )
 
-    company_data = [
-        [
-            Paragraph(
-                f"<b>{company_name}</b>",
-                styles["Heading2"],
-            ),
-            Paragraph(
-                "<b>IZLAZNA FAKTURA</b>",
-                styles["Heading2"],
-            ),
-        ],
-        [
+    logo_element = ""
+
+    if (
+        company
+        and company.logo_path
+        and os.path.exists(company.logo_path)
+    ):
+        try:
+            logo_element = Image(
+                company.logo_path,
+                width=38 * mm,
+                height=25 * mm,
+                kind="proportional",
+            )
+        except Exception:
+            logo_element = ""
+
+    company_text = [
+        Paragraph(
+            f"<b>{company_name}</b>",
+            styles["Heading2"],
+        ),
+        Paragraph(
             f"Adresa: {company_address}",
-            f"Broj: {invoice.invoice_number}",
-        ],
-        [
+            styles["Normal"],
+        ),
+        Paragraph(
             f"PIB: {company_pib}",
-            (
-                "Datum: "
-                f"{invoice.invoice_date.strftime('%d.%m.%Y.')}"
-            ),
-        ],
-        [
+            styles["Normal"],
+        ),
+        Paragraph(
             f"Matični broj: {company_mb}",
-            f"Način plaćanja: {invoice.payment_method}",
-        ],
-        [
-            "",
-            f"Status: {invoice.status}",
-        ],
+            styles["Normal"],
+        ),
+        Paragraph(
+            f"Telefon: {company_phone}",
+            styles["Normal"],
+        ),
+        Paragraph(
+            f"E-mail: {company_email}",
+            styles["Normal"],
+        ),
+        Paragraph(
+            f"Banka: {company_bank_name}",
+            styles["Normal"],
+        ),
+        Paragraph(
+            f"Broj računa: {company_bank_account}",
+            styles["Normal"],
+        ),
     ]
 
-    company_table = Table(
-        company_data,
-        colWidths=[90 * mm, 80 * mm],
+    invoice_text = [
+        Paragraph(
+            "<b>IZLAZNA FAKTURA</b>",
+            styles["Heading2"],
+        ),
+        Paragraph(
+            f"Broj: {invoice.invoice_number}",
+            styles["Normal"],
+        ),
+        Paragraph(
+            "Datum: "
+            f"{invoice.invoice_date.strftime('%d.%m.%Y.')}",
+            styles["Normal"],
+        ),
+        Paragraph(
+            f"Način plaćanja: {invoice.payment_method}",
+            styles["Normal"],
+        ),
+        Paragraph(
+            f"Status: {invoice.status}",
+            styles["Normal"],
+        ),
+    ]
+
+    header_table = Table(
+        [
+            [
+                logo_element,
+                company_text,
+                invoice_text,
+            ]
+        ],
+        colWidths=[
+            40 * mm,
+            75 * mm,
+            55 * mm,
+        ],
     )
 
-    company_table.setStyle(
+    header_table.setStyle(
         TableStyle(
             [
                 (
@@ -144,20 +207,20 @@ def create_invoice_pdf(invoice, customer, company):
                 ),
                 (
                     "ALIGN",
-                    (1, 0),
-                    (1, -1),
+                    (2, 0),
+                    (2, 0),
                     "RIGHT",
                 ),
                 (
                     "BOTTOMPADDING",
                     (0, 0),
                     (-1, -1),
-                    6,
+                    8,
                 ),
                 (
                     "LINEBELOW",
-                    (0, -1),
-                    (-1, -1),
+                    (0, 0),
+                    (-1, 0),
                     1,
                     colors.grey,
                 ),
@@ -165,19 +228,15 @@ def create_invoice_pdf(invoice, customer, company):
         )
     )
 
-    elements.append(company_table)
+    elements.append(header_table)
     elements.append(Spacer(1, 10 * mm))
 
     customer_name = customer.name if customer else ""
-    customer_pib = (
-        customer.pib
-        if customer and customer.pib
-        else ""
+    customer_pib = value_or_empty(
+        customer.pib if customer else None
     )
-    customer_address = (
-        customer.address
-        if customer and customer.address
-        else ""
+    customer_address = value_or_empty(
+        customer.address if customer else None
     )
 
     customer_data = [
@@ -189,7 +248,10 @@ def create_invoice_pdf(invoice, customer, company):
 
     customer_table = Table(
         customer_data,
-        colWidths=[45 * mm, 125 * mm],
+        colWidths=[
+            45 * mm,
+            125 * mm,
+        ],
     )
 
     customer_table.setStyle(
@@ -220,13 +282,13 @@ def create_invoice_pdf(invoice, customer, company):
                     colors.grey,
                 ),
                 (
-                    "BOTTOMPADDING",
+                    "TOPPADDING",
                     (0, 0),
                     (-1, -1),
                     6,
                 ),
                 (
-                    "TOPPADDING",
+                    "BOTTOMPADDING",
                     (0, 0),
                     (-1, -1),
                     6,
@@ -331,7 +393,10 @@ def create_invoice_pdf(invoice, customer, company):
                 f"{format_money(invoice.amount)} RSD",
             ]
         ],
-        colWidths=[100 * mm, 70 * mm],
+        colWidths=[
+            100 * mm,
+            70 * mm,
+        ],
     )
 
     total_table.setStyle(
