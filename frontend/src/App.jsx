@@ -1,8 +1,11 @@
 import "./App.css";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
+import ProtectedRoute from "./auth/ProtectedRoute";
+import RoleRoute from "./auth/RoleRoute";
 import MainLayout from "./layouts/MainLayout";
 
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
@@ -11,97 +14,144 @@ import Invoices from "./pages/Invoices";
 import CompanySettings from "./pages/CompanySettings";
 import Placeholder from "./pages/Placeholder";
 
+const ALL_ROLES = ["admin", "operator", "accountant"];
+const FINANCE_ROLES = ["admin", "accountant"];
+const ADMIN_ROLES = ["admin"];
+
+function ProtectedPage({ title, allowedRoles, children }) {
+  return (
+    <ProtectedRoute>
+      <RoleRoute allowedRoles={allowedRoles}>
+        <MainLayout title={title}>{children}</MainLayout>
+      </RoleRoute>
+    </ProtectedRoute>
+  );
+}
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Login />} />
+
+      <Route
+        path="/"
+        element={<Navigate to="/dashboard" replace />}
+      />
 
       <Route
         path="/dashboard"
         element={
-          <MainLayout title="Dashboard">
+          <ProtectedPage
+            title="Dashboard"
+            allowedRoles={ALL_ROLES}
+          >
             <Dashboard />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/customers"
         element={
-          <MainLayout title="Kupci">
+          <ProtectedPage
+            title="Kupci"
+            allowedRoles={ALL_ROLES}
+          >
             <Customers />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/suppliers"
         element={
-          <MainLayout title="Dobavljači">
+          <ProtectedPage
+            title="Dobavljači"
+            allowedRoles={ALL_ROLES}
+          >
             <Suppliers />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/incomes"
         element={
-          <MainLayout title="Prihodi">
+          <ProtectedPage
+            title="Prihodi"
+            allowedRoles={ALL_ROLES}
+          >
             <Incomes />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/invoices"
         element={
-          <MainLayout title="Fakture">
+          <ProtectedPage
+            title="Fakture"
+            allowedRoles={ALL_ROLES}
+          >
             <Invoices />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/expenses"
         element={
-          <MainLayout title="Rashodi">
+          <ProtectedPage
+            title="Rashodi"
+            allowedRoles={FINANCE_ROLES}
+          >
             <Placeholder title="Rashodi" />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/reports"
         element={
-          <MainLayout title="Izveštaji">
+          <ProtectedPage
+            title="Izveštaji"
+            allowedRoles={FINANCE_ROLES}
+          >
             <Placeholder title="Izveštaji" />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/company-settings"
         element={
-          <MainLayout title="Podešavanja firme">
+          <ProtectedPage
+            title="Podešavanja firme"
+            allowedRoles={ADMIN_ROLES}
+          >
             <CompanySettings />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
       <Route
         path="/settings"
         element={
-          <MainLayout title="Podešavanja">
+          <ProtectedPage
+            title="Podešavanja"
+            allowedRoles={ADMIN_ROLES}
+          >
             <Placeholder title="Podešavanja" />
-          </MainLayout>
+          </ProtectedPage>
         }
       />
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="*"
+        element={<Navigate to="/dashboard" replace />}
+      />
     </Routes>
   );
 }
 
 export default App;
-
-    

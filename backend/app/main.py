@@ -12,6 +12,7 @@ from routers import (
     incomes,
     expenses,
     invoices,
+    users,
 )
 
 models.Base.metadata.create_all(bind=engine)
@@ -33,6 +34,7 @@ app.include_router(dashboard.router)
 app.include_router(incomes.router)
 app.include_router(expenses.router)
 app.include_router(invoices.router)
+app.include_router(users.router)
 
 
 @app.get("/")

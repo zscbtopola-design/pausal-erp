@@ -153,3 +153,37 @@ class InvoiceOut(BaseModel):
 
     class Config:
         from_attributes = True
+# =========================
+# KORISNICI
+# =========================
+
+class UserCreate(BaseModel):
+    company_id: int
+    full_name: str
+    email: str
+    password: str
+    role: str = "operator"
+    is_active: bool = True
+
+
+class UserOut(BaseModel):
+    id: int
+    company_id: int
+    full_name: str
+    email: str
+    role: str
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
