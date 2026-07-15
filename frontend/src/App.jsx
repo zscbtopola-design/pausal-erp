@@ -11,8 +11,11 @@ import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
 import Incomes from "./pages/Incomes";
 import Invoices from "./pages/Invoices";
+import PurchaseInvoices from "./pages/PurchaseInvoices";
+import Expenses from "./pages/Expenses/index.jsx";
 import CompanySettings from "./pages/CompanySettings";
 import Placeholder from "./pages/Placeholder";
+import Kpo from "./pages/Kpo/index.jsx";
 
 const ALL_ROLES = ["admin", "operator", "accountant"];
 const FINANCE_ROLES = ["admin", "accountant"];
@@ -22,7 +25,9 @@ function ProtectedPage({ title, allowedRoles, children }) {
   return (
     <ProtectedRoute>
       <RoleRoute allowedRoles={allowedRoles}>
-        <MainLayout title={title}>{children}</MainLayout>
+        <MainLayout title={title}>
+          {children}
+        </MainLayout>
       </RoleRoute>
     </ProtectedRoute>
   );
@@ -84,6 +89,18 @@ function App() {
             <Incomes />
           </ProtectedPage>
         }
+/>
+<Route
+  path="/kpo"
+  element={
+    <ProtectedPage
+      title="KPO – Knjiga prihoda"
+      allowedRoles={FINANCE_ROLES}
+    >
+      <Kpo />
+    </ProtectedPage>
+  }
+
       />
 
       <Route
@@ -99,13 +116,25 @@ function App() {
       />
 
       <Route
+        path="/purchase-invoices"
+        element={
+          <ProtectedPage
+            title="Ulazne fakture"
+            allowedRoles={ALL_ROLES}
+          >
+            <PurchaseInvoices />
+          </ProtectedPage>
+        }
+      />
+
+      <Route
         path="/expenses"
         element={
           <ProtectedPage
             title="Rashodi"
             allowedRoles={FINANCE_ROLES}
           >
-            <Placeholder title="Rashodi" />
+            <Expenses />
           </ProtectedPage>
         }
       />

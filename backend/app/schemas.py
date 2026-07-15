@@ -187,3 +187,65 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+# =========================
+# STAVKE ULAZNE FAKTURE
+# =========================
+
+class PurchaseInvoiceItemCreate(BaseModel):
+    description: str
+    quantity: float = 1
+    unit_price: float = 0
+    discount: float = 0
+
+
+class PurchaseInvoiceItemOut(PurchaseInvoiceItemCreate):
+    id: int
+    purchase_invoice_id: int
+    total: float
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# ULAZNE FAKTURE
+# =========================
+
+class PurchaseInvoiceCreate(BaseModel):
+    company_id: int
+    supplier_id: int
+
+    invoice_number: str
+    invoice_date: date
+    due_date: date | None = None
+
+    description: str | None = None
+    amount: float = 0
+    status: str = "neplacena"
+    payment_method: str = "racun"
+
+    items: list[PurchaseInvoiceItemCreate] = Field(
+        default_factory=list
+    )
+
+
+class PurchaseInvoiceOut(BaseModel):
+    id: int
+    company_id: int
+    supplier_id: int
+
+    invoice_number: str
+    invoice_date: date
+    due_date: date | None = None
+
+    description: str | None = None
+    amount: float
+    status: str
+    payment_method: str
+
+    items: list[PurchaseInvoiceItemOut] = Field(
+        default_factory=list
+    )
+
+    class Config:
+        from_attributes = True

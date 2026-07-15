@@ -38,6 +38,18 @@ function Sidebar() {
       icon: "📄",
       roles: ["admin", "operator", "accountant"],
     },
+{
+  path: "/kpo",
+  label: "KPO knjiga",
+  icon: "📒",
+  roles: ["admin", "accountant"],
+},
+{
+  path: "/purchase-invoices",
+  label: "Ulazne fakture",
+  icon: "📥",
+  roles: ["admin", "operator", "accountant"],
+},
     {
       path: "/expenses",
       label: "Rashodi",
